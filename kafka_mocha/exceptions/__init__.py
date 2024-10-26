@@ -1,0 +1,2 @@
+class KafkaSimulatorBootstrapException(Exception):
+    pass
