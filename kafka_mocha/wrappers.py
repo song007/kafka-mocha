@@ -1,25 +1,30 @@
-from confluent_kafka import Producer as ConfluentProducer
-from kafka_mocha.kproducer import KProducer
 from functools import wraps
+from unittest.mock import patch
+
+from kafka_mocha.kproducer import KProducer
 
 
-def mock_producer(cls):
-    """Wrapp Kafka Producer class and return KProducer (mock)
+class mock_producer:
+    """Context manager/decorator for mocking confluent_kafka.Producer.
 
-    :param cls:
-    :return:
+    TODO: More detailed description will be added in the future.
     """
 
-    @wraps(cls)
-    def wrapper(*args, **kwargs):
-        return KProducer(*args, **kwargs)
+    def __init__(self):
+        self._patcher = patch("confluent_kafka.Producer", new=KProducer)
 
-    return wrapper
+    def __call__(self, func):
 
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            with self._patcher:
+                return func(*args, **kwargs)
 
-@mock_producer
-def producer_factory(_conf):
-    return ConfluentProducer(_conf)
+        return wrapper
 
+    def __enter__(self):
+        self._patcher.start()
+        return self
 
-# producer = producer_factory({'bootstrap.servers': 'localhost:9092'})
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._patcher.stop()

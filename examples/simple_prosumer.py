@@ -1,5 +1,6 @@
 from confluent_kafka import Consumer, Producer
-from confluent_kafka.serialization import SerializationContext, MessageField
+from confluent_kafka.serialization import MessageField, SerializationContext
+from moto import mock_aws
 
 
 def main(args):
