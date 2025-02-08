@@ -62,8 +62,6 @@ producer_config_schema = {
     "linger.ms": {"type": int, "range": (0, 900000)},
     "message.send.max.retries": {"type": int, "range": (0, 2147483647)},
     "retries": {"type": int, "range": (0, 2147483647)},
-    "retry.backoff.ms": {"type": int, "range": (1, 300000)},
-    "retry.backoff.max.ms": {"type": int, "range": (1, 300000)},
     "queue.buffering.backpressure.threshold": {"type": int, "range": (1, 1000000)},
     "compression.codec": {"type": str, "allowed": ["none", "gzip", "snappy", "lz4", "zstd"]},
     "compression.type": {"type": str, "allowed": ["none", "gzip", "snappy", "lz4", "zstd"]},
@@ -166,6 +164,18 @@ def validate_producer_config(config) -> None:
 
     _validate_against_schema(producer_config_schema, config)
 
+    transactional_id = config.get("transactional.id")
+    enable_idempotence = config.get("enable.idempotence")
+    transaction_ms = config.get("transaction.timeout.ms")
+    if transactional_id and not enable_idempotence:
+        raise KafkaClientBootstrapException(
+            "Configuration validation errors: transactional.id requires enable.idempotence"
+        )
+    if transaction_ms and not transactional_id:
+        raise KafkaClientBootstrapException(
+            "Configuration validation errors: transaction.timeout.ms requires transactional.id"
+        )
+
 
 def validate_consumer_config(config) -> None:
     """Validates producer's (C/P = C) configuration options for KafkaProducer.
@@ -199,7 +209,7 @@ def validate_config(config_type: Literal["common", "producer", "consumer"], conf
                 rest_config[key] = value
         validate_producer_config(producer_only_config)
         validate_common_config(rest_config)
-    else:
+    elif config_type == "consumer":
         consumer_only_config = {**config}
         rest_config = {}
 
@@ -209,3 +219,5 @@ def validate_config(config_type: Literal["common", "producer", "consumer"], conf
                 rest_config[key] = value
         validate_consumer_config(consumer_only_config)
         validate_common_config(rest_config)
+    else:
+        raise ValueError("Invalid configuration type")

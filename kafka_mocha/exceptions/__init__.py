@@ -2,11 +2,15 @@ class KafkaSimulatorBootstrapException(Exception):
     pass
 
 
-class KafkaServerBootstrapException(Exception):
+class KafkaSimulatorProcessingException(Exception):
     pass
 
 
 class KafkaClientBootstrapException(Exception):
+    pass
+
+
+class KProducerProcessingException(Exception):
     pass
 
 
