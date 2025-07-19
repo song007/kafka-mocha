@@ -81,7 +81,9 @@ class KMessage:
     def _check_key_value(obj: Optional[str | bytes]):
         """Check that key/value is a string or bytes."""
         if obj is not None and not isinstance(obj, str) and not isinstance(obj, bytes):
-            raise TypeError(f"Message's key/value must be a string or bytes, got {type(obj).__name__}")
+            raise TypeError(
+                f"Message's key/value must be a string or bytes, got {type(obj).__name__}"
+            )
 
     @staticmethod
     def _check_headers(headers):
@@ -91,7 +93,9 @@ class KMessage:
         elif isinstance(headers, list) or isinstance(headers, tuple):
             for header in headers:
                 if not isinstance(header, tuple):
-                    raise TypeError("Message's headers must be a list (or tuple) of tuples")
+                    raise TypeError(
+                        "Message's headers must be a list (or tuple) of tuples"
+                    )
                 if not isinstance(header[0], str):
                     raise TypeError("Message's headers' keys must be strings")
                 if not isinstance(header[1], bytes):
@@ -102,7 +106,9 @@ class KMessage:
                 if not isinstance(key, str):
                     raise TypeError("Message's header's key must be a string")
                 if val is not None and not isinstance(val, (str, bytes)):
-                    raise TypeError("Message's header's value must be a string or bytes or None")
+                    raise TypeError(
+                        "Message's header's value must be a string or bytes or None"
+                    )
         else:
             raise TypeError("Message's headers must be a list or tuple")
 
@@ -147,7 +153,7 @@ class KMessage:
     def key(self) -> Optional[str | bytes]:
         return self._key
 
-    def value(self, payload) -> Optional[str | bytes]:
+    def value(self, payload=None) -> Optional[str | bytes]:
         return self._value
 
     def offset(self) -> Optional[int]:
@@ -205,7 +211,11 @@ class KMessage:
         self.check_partition_offset(offset, allow_none=False)
         self._offset = offset
 
-    def set_timestamp(self, timestamp_ms: int, timestamp_type: int = confluent_kafka.TIMESTAMP_CREATE_TIME) -> None:
+    def set_timestamp(
+        self,
+        timestamp_ms: int,
+        timestamp_type: int = confluent_kafka.TIMESTAMP_CREATE_TIME,
+    ) -> None:
         """Set the field 'Message.timestamp' with new value."""
         self.check_timestamp((timestamp_ms, timestamp_type))
         self._timestamp = (timestamp_ms, timestamp_type)
@@ -256,7 +266,11 @@ class KPartition:
                 found_idx = idx
                 break
 
-        return self._heap[found_idx : found_idx + batch_size] if found_idx is not None else []
+        return (
+            self._heap[found_idx : found_idx + batch_size]
+            if found_idx is not None
+            else []
+        )
 
     def get_by_timestamp(self, timestamp: int, batch_size: int = 1) -> list[KMessage]:
         """Get messages starting from a specific timestamp."""
@@ -275,7 +289,9 @@ class KPartition:
 class KTopic:
     """Dataclass mimicking Kafka topic"""
 
-    def __init__(self, name: str, partition_no: int = 1, config: Optional[dict[str, Any]] = None):
+    def __init__(
+        self, name: str, partition_no: int = 1, config: Optional[dict[str, Any]] = None
+    ):
         if not (isinstance(partition_no, int) and partition_no > 0):
             raise TypeError("Topic's partition number must be integer greater than 0")
         self.partition_no = partition_no
@@ -305,8 +321,12 @@ class KConsumerGroup:
 
     def __init__(self, group_id: str):
         self.group_id = group_id
-        self.members: dict[int, set[str]] = {}  # consumer_id -> set of subscribed topics
-        self.assignments: list[KConsumerAssignment] = []  # list of consumer-partition assignments
+        self.members: dict[
+            int, set[str]
+        ] = {}  # consumer_id -> set of subscribed topics
+        self.assignments: list[
+            KConsumerAssignment
+        ] = []  # list of consumer-partition assignments
         self.offsets: dict[str, dict[int, int]] = {}  # topic -> partition -> offset
 
     def add_member(self, consumer_id: int, topics: list[str]) -> None:
@@ -318,7 +338,9 @@ class KConsumerGroup:
         if consumer_id in self.members:
             del self.members[consumer_id]
             # Remove assignments for this consumer
-            self.assignments = [a for a in self.assignments if a.consumer_id != consumer_id]
+            self.assignments = [
+                a for a in self.assignments if a.consumer_id != consumer_id
+            ]
 
     def get_member_assignment(self, consumer_id: int) -> list[TopicPartition]:
         """Get the topic partitions assigned to a specific consumer."""
@@ -327,10 +349,15 @@ class KConsumerGroup:
             if assignment.consumer_id == consumer_id:
                 # Get the committed offset for this partition if available
                 offset = -1
-                if assignment.topic in self.offsets and assignment.partition in self.offsets[assignment.topic]:
+                if (
+                    assignment.topic in self.offsets
+                    and assignment.partition in self.offsets[assignment.topic]
+                ):
                     offset = self.offsets[assignment.topic][assignment.partition]
 
-                result.append(TopicPartition(assignment.topic, assignment.partition, offset))
+                result.append(
+                    TopicPartition(assignment.topic, assignment.partition, offset)
+                )
         return result
 
     def is_member(self, consumer_id: int) -> bool:
@@ -350,7 +377,9 @@ class KConsumerGroup:
             return self.offsets[topic][partition]
         return -1  # Indicates no committed offset
 
-    def rebalance(self, available_topics: list[KTopic]) -> dict[int, list[TopicPartition]]:
+    def rebalance(
+        self, available_topics: list[KTopic]
+    ) -> dict[int, list[TopicPartition]]:
         """
         Rebalance the consumer group assigning partitions to consumers.
         Returns a dictionary mapping consumer_id to assigned TopicPartitions.
@@ -361,7 +390,10 @@ class KConsumerGroup:
         # Get all topic partitions that any member is subscribed to
         all_topic_partitions = []
         for topic in available_topics:
-            if any(topic.name in subscribed_topics for subscribed_topics in self.members.values()):
+            if any(
+                topic.name in subscribed_topics
+                for subscribed_topics in self.members.values()
+            ):
                 for partition_idx in range(len(topic.partitions)):
                     all_topic_partitions.append((topic.name, partition_idx))
 
@@ -387,7 +419,9 @@ class KConsumerGroup:
             if topic_name in consumers_by_topic and consumers_by_topic[topic_name]:
                 consumers = consumers_by_topic[topic_name]
                 # Choose consumer using round-robin
-                consumer_idx = abs(hash(f"{topic_name}-{partition_idx}")) % len(consumers)
+                consumer_idx = abs(hash(f"{topic_name}-{partition_idx}")) % len(
+                    consumers
+                )
                 consumer_id = consumers[consumer_idx]
 
                 # Get committed offset for this partition
@@ -395,10 +429,16 @@ class KConsumerGroup:
 
                 # Create assignment
                 self.assignments.append(
-                    KConsumerAssignment(consumer_id=consumer_id, topic=topic_name, partition=partition_idx)
+                    KConsumerAssignment(
+                        consumer_id=consumer_id,
+                        topic=topic_name,
+                        partition=partition_idx,
+                    )
                 )
 
                 # Add to result
-                assignments[consumer_id].append(TopicPartition(topic_name, partition_idx, offset))
+                assignments[consumer_id].append(
+                    TopicPartition(topic_name, partition_idx, offset)
+                )
 
         return assignments
