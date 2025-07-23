@@ -115,6 +115,21 @@ def render_json(topics: list[KTopic], **kwargs) -> None:
             output.write(content)
 
 
+def render_memory(topics: list[KTopic], **kwargs) -> None:
+    """Renders memory output from the records sent to Kafka."""
+    topic_records = _prepare_records(topics)
+
+    target: dict | None = None
+    if "target" in kwargs:
+        target = kwargs["target"]
+
+    if target is None or not isinstance(target, dict):
+        raise ValueError("target must be a dictionary")
+
+    for topic in topic_records:
+        target[topic["name"]] = topic["messages"]
+
+
 def render(output: OutputFormat, records: list[KTopic], **kwargs) -> None:
     """Strategy pattern for rendering output."""
     include_internal_topics = kwargs.pop("include_internal_topics", False)
@@ -128,5 +143,7 @@ def render(output: OutputFormat, records: list[KTopic], **kwargs) -> None:
             render_csv(records, **kwargs)
         case "json":
             render_json(records, **kwargs)
+        case "memory":
+            render_memory(records, **kwargs)
         case _:
             raise ValueError(f"Unsupported output format: {output}")
