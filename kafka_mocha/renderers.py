@@ -49,10 +49,7 @@ def render_html(topics: list[KTopic], **kwargs) -> None:
     include_markers = kwargs.get("include_markers", False)
 
     content = template.render(
-        timestamp=datetime.now()
-        .astimezone()
-        .isoformat(timespec="seconds")
-        .replace("+", " + "),
+        timestamp=datetime.now().astimezone().isoformat(timespec="seconds").replace("+", " + "),
         os=system(),
         topics=topic_records,
         include_markers=include_markers,
@@ -71,19 +68,11 @@ def render_csv(topics: list[KTopic], **kwargs) -> None:
 
     for topic in topic_records:
         output_name = topic["name"] + ".csv"
-        content = template.render(
-            messages=topic["messages"], include_markers=include_markers
-        )
+        content = template.render(messages=topic["messages"], include_markers=include_markers)
         content = "\n".join(
-            [
-                line.replace("# Topic:", "\n# Topic:")
-                for line in content.split("\n")
-                if line.strip() != ""
-            ]
+            [line.replace("# Topic:", "\n# Topic:") for line in content.split("\n") if line.strip() != ""]
         )
-        target_file_path = (
-            f"{target!s}/{output_name!s}" if len(target) > 0 else output_name
-        )
+        target_file_path = f"{target!s}/{output_name!s}" if len(target) > 0 else output_name
         with open(target_file_path, mode="w", encoding="utf-8") as output:
             output.write(content)
 
@@ -98,19 +87,11 @@ def render_json(topics: list[KTopic], **kwargs) -> None:
 
     for topic in topic_records:
         output_name = topic["name"] + ".json"
-        content = template.render(
-            messages=topic["messages"], include_markers=include_markers
-        )
+        content = template.render(messages=topic["messages"], include_markers=include_markers)
         content = "\n".join(
-            [
-                line.replace("# Topic:", "\n# Topic:")
-                for line in content.split("\n")
-                if line.strip() != ""
-            ]
+            [line.replace("# Topic:", "\n# Topic:") for line in content.split("\n") if line.strip() != ""]
         )
-        target_file_path = (
-            f"{target!s}/{output_name!s}" if len(target) > 0 else output_name
-        )
+        target_file_path = f"{target!s}/{output_name!s}" if len(target) > 0 else output_name
         with open(target_file_path, mode="w", encoding="utf-8") as output:
             output.write(content)
 
