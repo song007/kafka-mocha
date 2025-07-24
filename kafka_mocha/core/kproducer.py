@@ -1,6 +1,6 @@
+import platform
 import signal
 from functools import reduce
-import platform
 from inspect import GEN_SUSPENDED, getgeneratorstate
 from time import sleep, time
 from typing import Any, Optional
@@ -39,16 +39,12 @@ class KProducer:
         self.output = output
         self.logger = get_custom_logger(loglevel)
         self._transactional_id = config.get("transactional.id")
-        self._max_retry_count = config.get(
-            "retries", config.get("message.send.max.retries", 6)
-        )
+        self._max_retry_count = config.get("retries", config.get("message.send.max.retries", 6))
         self._retry_backoff = config.get("retry.backoff.ms", 10) / 1000  # in seconds
 
         self.buffer = []
         buffer_max_len = config.get("queue.buffering.max.messages", 1000)
-        buffer_max_ms = config.get(
-            "linger.ms", config.get("queue.buffering.max.ms", 300)
-        )
+        buffer_max_ms = config.get("linger.ms", config.get("queue.buffering.max.ms", 300))
         self._buffer_handler = buffer_handler(
             f"KProducer({id(self)})",
             self.buffer,
@@ -57,12 +53,8 @@ class KProducer:
             transact=self._transactional_id is not None,
         )
 
-        self._ticking_thread = TickingThread(
-            f"KProducer({id(self)})", self._buffer_handler
-        )
-        self._ticking_thread.daemon = (
-            True  # TODO 34: Workaround for #34 bug/34-tickingthread-never-joins
-        )
+        self._ticking_thread = TickingThread(f"KProducer({id(self)})", self._buffer_handler)
+        self._ticking_thread.daemon = True  # TODO 34: Workaround for #34 bug/34-tickingthread-never-joins
         self._buffer_handler.send(KSignals.INIT.value)
         self._kafka_simulator = KafkaSimulator()
         self._ticking_thread.start()
@@ -70,9 +62,7 @@ class KProducer:
     def abort_transaction(self):
         """Duck type for confluent_kafka/cimpl.py::abort_transaction (see signature there)."""
         self.purge()
-        self._kafka_simulator.transaction_coordinator(
-            "abort", id(self), self._transactional_id
-        )
+        self._kafka_simulator.transaction_coordinator("abort", id(self), self._transactional_id)
 
         key = str(
             {
@@ -81,26 +71,18 @@ class KProducer:
             }
         )
         value = str({"producerId": id(self), "markerType": KMarkers.ABORT.value})
-        message = KMessage(
-            "buffer", 666, key.encode(), value.encode(), timestamp=0, marker=True
-        )
+        message = KMessage("buffer", 666, key.encode(), value.encode(), timestamp=0, marker=True)
         self._send_with_retry(message)
 
     def begin_transaction(self):
         """Duck type for confluent_kafka/cimpl.py::begin_transaction (see signature there)."""
-        self._kafka_simulator.transaction_coordinator(
-            "begin", id(self), self._transactional_id
-        )
+        self._kafka_simulator.transaction_coordinator("begin", id(self), self._transactional_id)
 
     def commit_transaction(self):
         """Duck type for confluent_kafka/cimpl.py::commit_transaction (see signature there)."""
-        self._kafka_simulator.transaction_coordinator(
-            "commit", id(self), self._transactional_id, dry_run=True
-        )
+        self._kafka_simulator.transaction_coordinator("commit", id(self), self._transactional_id, dry_run=True)
         self.flush()
-        self._kafka_simulator.transaction_coordinator(
-            "commit", id(self), self._transactional_id
-        )
+        self._kafka_simulator.transaction_coordinator("commit", id(self), self._transactional_id)
 
         key = str(
             {
@@ -109,9 +91,7 @@ class KProducer:
             }
         )
         value = str({"producerId": id(self), "markerType": KMarkers.COMMIT.value})
-        message = KMessage(
-            "buffer", 666, key.encode(), value.encode(), timestamp=0, marker=True
-        )
+        message = KMessage("buffer", 666, key.encode(), value.encode(), timestamp=0, marker=True)
         self._send_with_retry(message)
 
     def flush(self, timeout: Optional[float] = None):
@@ -139,9 +119,7 @@ class KProducer:
                 )
             )
 
-        self._kafka_simulator.transaction_coordinator(
-            "init", id(self), self._transactional_id
-        )
+        self._kafka_simulator.transaction_coordinator("init", id(self), self._transactional_id)
 
     def list_topics(self, topic: str = None, timeout: float = -1.0, *args, **kwargs):
         """Duck type for confluent_kafka/cimpl.py::list_topics (see signature there).
@@ -149,9 +127,7 @@ class KProducer:
         Returns ClusterMetadata object from Kafka Simulator.
         """
         if timeout != -1.0:
-            self.logger.info(
-                "KProducer doesn't support timing out for this method. Parameter will be ignored."
-            )
+            self.logger.info("KProducer doesn't support timing out for this method. Parameter will be ignored.")
 
         return self._kafka_simulator.get_cluster_mdata(topic)
 
@@ -188,9 +164,7 @@ class KProducer:
 
         Instead of producing a real message to Kafka, it is sent to Kafka Simulator.
         """
-        message = KMessage(
-            topic, partition, key, value, headers, timestamp, on_delivery=on_delivery
-        )
+        message = KMessage(topic, partition, key, value, headers, timestamp, on_delivery=on_delivery)
         self._send_with_retry(message)
 
     def send_offsets_to_transaction(
@@ -231,14 +205,10 @@ class KProducer:
                 value = str(position.offset).encode()
                 # Create an offset commit message (will be part of the transaction)
                 # Mark with producer ID so the simulator knows this is transactional
-                message = KMessage(
-                    "__consumer_offsets", -1, key, value, timestamp=0, pid=id(self)
-                )
+                message = KMessage("__consumer_offsets", -1, key, value, timestamp=0, pid=id(self))
                 self._send_with_retry(message)
 
-        self.logger.debug(
-            "Sent offsets to transaction: %s for group: %s", positions, group_id
-        )
+        self.logger.debug("Sent offsets to transaction: %s for group: %s", positions, group_id)
 
     def set_sasl_credentials(self, *args, **kwargs):
         raise NotImplementedError("Not yet implemented...")
@@ -269,9 +239,7 @@ class KProducer:
                 try_count += 1
                 sleep(try_count**2 * self._retry_backoff)
         else:
-            raise KProducerMaxRetryException(
-                f"Exceeded max send retries ({self._max_retry_count})"
-            )
+            raise KProducerMaxRetryException(f"Exceeded max send retries ({self._max_retry_count})")
 
     @staticmethod
     def _timeout_handler(signum: Any, frame: Any) -> None:
@@ -312,9 +280,7 @@ class KProducer:
                 count += 1
                 sleep(count**2 * self._retry_backoff)
         else:
-            raise KProducerMaxRetryException(
-                f"Exceeded max send retries ({self._max_retry_count})"
-            )
+            raise KProducerMaxRetryException(f"Exceeded max send retries ({self._max_retry_count})")
 
     def _done(self):
         """Additional method to gracefully close message buffer."""

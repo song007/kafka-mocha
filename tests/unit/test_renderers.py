@@ -30,9 +30,7 @@ def test_render_html() -> None:
                             int(datetime.now().timestamp() * 1000),
                             TIMESTAMP_CREATE_TIME,
                         ),
-                        headers=[("header_key", b"header_value")]
-                        if individual % 3 == 0
-                        else None,
+                        headers=[("header_key", b"header_value")] if individual % 3 == 0 else None,
                     )
                 )
                 sleep(0.01)
@@ -67,9 +65,7 @@ def test_render_csv() -> None:
                             int(datetime.now().timestamp() * 1000),
                             TIMESTAMP_CREATE_TIME,
                         ),
-                        headers=[("header_key", b"header_value")]
-                        if individual % 2 == 0
-                        else None,
+                        headers=[("header_key", b"header_value")] if individual % 2 == 0 else None,
                     )
                 )
                 sleep(0.1)
@@ -104,9 +100,7 @@ def test_render_json() -> None:
                             int(datetime.now().timestamp() * 1000),
                             TIMESTAMP_CREATE_TIME,
                         ),
-                        headers=[("header_key", b"header_value")]
-                        if individual % 2 == 0
-                        else None,
+                        headers=[("header_key", b"header_value")] if individual % 2 == 0 else None,
                     )
                 )
                 sleep(0.1)
