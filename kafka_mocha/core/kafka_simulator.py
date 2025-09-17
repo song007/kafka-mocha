@@ -362,9 +362,7 @@ class KafkaSimulator:
                 ]
                 if not dry_run:
                     # Abort pending transactional offset commits
-                    self._abort_pending_transactional_offsets(
-                        producer_id, transactional_id
-                    )
+                    self._abort_pending_transactional_offsets(producer_id, transactional_id)
 
                     # Reset state
                     for idx, _id in enumerate(
